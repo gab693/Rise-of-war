@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warfare Game - {{ player.name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #4a6741 100%);
+            margin: 0;
+            padding: 20px;
+            color: white;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #f39c12;
+        }
+        button {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 18px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+            font-size: 16px;
+            transition: all 0.1s;
+            min-width: 120px;
+            min-height: 50px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+        button:active {
+            transform: translateY(0px);
+            transition: all 0.05s;
+        }
+        button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .message {
+            background: rgba(52, 152, 219, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        select, input {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        .battlefield {
+            width: 100%;
+            max-width: 500px;
+            height: 300px;
+            background: #2c3e50;
+            border: 2px solid #34495e;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            display: none;
+            margin: 0 auto;
+        }
+        .joystick-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+        .joystick {
+            width: 30px;
+            height: 30px;
+            background: #3498db;
+            border-radius: 50%;
+            position: absolute;
+            top: 35px;
+            left: 35px;
+            cursor: pointer;
+        }
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.2);
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f39c12, #e67e22);
+            transition: width 0.3s;
+        }
+        #cooldownTimer {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚔️ {{ player.name }}'s Campaign</h1>
+        <h2>{{ current_age.name }} Era</h2>
+    </div>
+
+    <div class="game-container">
+        <div class="panel">
+            <h3>📊 Player Stats</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <div>Level</div>
+                    <div class="stat-value">{{ player.level }}</div>
+                </div>
+                <div class="stat-item">
+                    <div>💰 Gold</div>
+                    <div class="stat-value">{{ player.money }}</div>
+                </div>
+                <div class="stat-item">
+                    <div>📜 Scrolls</div>
+                    <div class="stat-value">{{ player.scrolls }}</div>
+                </div>
+                <div class="stat-item">
+                    <div>⚔️ Soldiers</div>
+                    <div class="stat-value">{{ player.soldiers }}</div>
+                </div>
+                <div class="stat-item">
+                    <div>🏆 Wins</div>
+                    <div class="stat-value">{{ player.wins }}</div>
+                </div>
+                <div class="stat-item">
+                    <div>💀 Losses</div>
+                    <div class="stat-value">{{ player.losses }}</div>
+                </div>
+            </div>
+
+            <div>
+                <strong>Experience:</strong> {{ player.experience }}/{{ player.level * 100 }}
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (player.experience / (player.level * 100)) * 100 }}%"></div>
+                </div>
+            </div>
+
+            <div>
+                <strong>Age Progress:</strong> {{ player.donation_progress }}/{{ game.donation_required }}
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (player.donation_progress / game.donation_required) * 100 }}%"></div>
+                </div>
+            </div>
+
+            {% if player.country %}
+            <div class="message">
+                <strong>🏛️ Country:</strong> {{ player.country }}<br>
+                <strong>💪 Advantage:</strong> {{ soldier_info.advantage }}<br>
+                <strong>⚠️ Weakness:</strong> {{ soldier_info.weakness }}
+            </div>
+            {% endif %}
+
+            {% if player.armor %}
+            <div class="message">
+                <strong>🛡️ Armor:</strong> {{ player.armor }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="panel">
+            <h3>⚔️ Actions</h3>
+
+            <div class="action-buttons">
+                <button onclick="battle()">🗡️ Battle</button>
+                <button onclick="buyScroll()">📜 Buy Scroll ({{ current_age.scroll_cost }} gold)</button>
+                <button onclick="recruitSoldier()">👥 Recruit Soldier ({{ 50 + (player.age * 25) }} gold)</button>
+                <button onclick="collectIncome()" id="incomeBtn">💰 Collect Income</button>
+            </div>
+
+            <div id="cooldownTimer"></div>
+
+            <h4>🏛️ Choose Country</h4>
+            <select id="countrySelect" onchange="chooseCountry()">
+                <option value="">Select Country...</option>
+                {% for country in current_age.countries %}
+                <option value="{{ country }}" {% if player.country == country %}selected{% endif %}>{{ country }}</option>
+                {% endfor %}
+            </select>
+
+            <h4>🛡️ Choose Armor</h4>
+            <select id="armorSelect" onchange="chooseArmor()">
+                <option value="">Select Armor...</option>
+                {% for armor in current_age.armor %}
+                <option value="{{ armor }}" {% if player.armor == armor %}selected{% endif %}>{{ armor }}</option>
+                {% endfor %}
+            </select>
+
+            <h4>💰 Donate to Advance Age</h4>
+            <input type="number" id="donationAmount" placeholder="Enter amount" min="1" max="{{ player.money }}">
+            <button onclick="donate()">💝 Donate</button>
+
+            <div class="action-buttons">
+                <button onclick="enterBattlefield()">🏟️ Enter Battlefield</button>
+                <button onclick="resetGame()" style="background: #7f8c8d;">🔄 Reset Game</button>
+            </div>
+
+            <div id="battlefield" class="battlefield">
+                <canvas id="battleCanvas" width="500" height="300"></canvas>
+                <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px;">
+                    <div>Time: <span id="battleTime">0</span>s</div>
+                    <div>Round: <span id="currentRound">1</span></div>
+                    <div>Enemies Left: <span id="enemiesLeft">0</span>/<span id="totalEnemies">0</span></div>
+                    <div>Gold Earned: <span id="goldEarned">0</span></div>
+                    <div>Health: <span id="playerHealth">100</span></div>
+                    <button onclick="retreat()" style="margin-top: 10px;">🏃 Retreat</button>
+                    <div style="margin-top: 10px;">
+                        <button onclick="setCommandMode('rally')">🚩 Rally</button>
+                        <button onclick="setCommandMode('hold')">🛡️ Hold</button>
+                    </div>
+                </div>
+                <div class="joystick-container" id="joystickContainer">
+                    <div class="joystick" id="joystick"></div>
+                </div>
+                <div style="position: absolute; bottom: 20px; right: 20px;">
+                    <button onclick="attackNearby()" style="background: #e74c3c; padding: 25px 35px; font-size: 18px; min-width: 140px; min-height: 70px;">⚔️ ATTACK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="messages" class="message" style="max-width: 1200px; margin: 20px auto;"></div>
+
+    <script>
+        let battleData = null;
+        let battleStartTime = 0;
+        let battleInterval = null;
+        let gameState = {
+            player: { x: 400, y: 200, health: 100 },
+            soldiers: [],
+            enemies: [],
+            enemiesKilled: 0,
+            goldEarned: 0,
+            currentRound: 0,
+            enemiesThisRound: 0,
+            totalEnemiesThisRound: 0,
+            commandMode: 'follow' // Default command mode
+        };
+        let canvas, ctx;
+        let joystickActive = false;
+        let joystickCenter = { x: 50, y: 50 };
+
+        function showMessage(text) {
+            document.getElementById('messages').innerHTML = text;
+        }
+
+        function battle() {
+            showMessage('Battle in progress...');
+            setTimeout(() => {
+                fetch('/battle', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.result);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 1);
+                        }
+                    });
+            }, 1);
+        }
+
+        function buyScroll() {
+            showMessage('Purchasing scroll...');
+            setTimeout(() => {
+                fetch('/buy_scroll', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.message);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 1);
+                        }
+                    });
+            }, 1);
+        }
+
+        function recruitSoldier() {
+            showMessage('Recruiting soldier...');
+            setTimeout(() => {
+                fetch('/recruit_soldier', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.message);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 1);
+                        }
+                    });
+            }, 1);
+        }
+
+        function collectIncome() {
+            showMessage('Collecting income...');
+            setTimeout(() => {
+                fetch('/collect_income', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.message);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 1);
+                        } else {
+                            startCooldownTimer();
+                        }
+                    });
+            }, 1);
+        }
+
+        function startCooldownTimer() {
+            const timer = document.getElementById('cooldownTimer');
+            const btn = document.getElementById('incomeBtn');
+            let seconds = 60;
+
+            btn.disabled = true;
+            const interval = setInterval(() => {
+                timer.textContent = `Cooldown: ${seconds}s`;
+                seconds--;
+                if (seconds < 0) {
+                    clearInterval(interval);
+                    timer.textContent = '';
+                    btn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        function chooseCountry() {
+            const country = document.getElementById('countrySelect').value;
+            if (!country) return;
+
+            showMessage('Joining country...');
+            const formData = new FormData();
+            formData.append('country', country);
+
+            setTimeout(() => {
+                fetch('/choose_country', {method: 'POST', body: formData})
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.message);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 1);
+                        }
+                    });
+            }, 1);
+        }
+
+        function chooseArmor() {
+            const armor = document.getElementById('armorSelect').value;
+            if (!armor) return;
+
+            showMessage('Equipping armor...');
+            const formData = new FormData();
+            formData.append('armor', armor);
+
+            setTimeout(() => {
+                fetch('/choose_armor', {method: 'POST', body: formData})
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.message);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 1);
+                        }
+                    });
+            }, 1);
+        }
+
+        function donate() {
+            const amount = document.getElementById('donationAmount').value;
+            if (!amount || amount <= 0) return;
+
+            showMessage('Making donation...');
+            const formData = new FormData();
+            formData.append('amount', amount);
+
+            setTimeout(() => {
+                fetch('/donate', {method: 'POST', body: formData})
+                    .then(response => response.json())
+                    .then(data => {
+                        showMessage(data.message);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 1);
+                        }
+                    });
+            }, 1);
+        }
+
+        function enterBattlefield() {
+            showMessage('Entering battlefield...');
+            setTimeout(() => {
+                fetch('/enter_battlefield', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            battleData = data;
+                            document.getElementById('battlefield').style.display = 'block';
+                            initializeBattlefield();
+                            startBattlefield();
+                        } else {
+                            showMessage(data.message);
+                        }
+                    });
+            }, 1);
+        }
+
+        function initializeBattlefield() {
+            canvas = document.getElementById('battleCanvas');
+            ctx = canvas.getContext('2d');
+
+            // Initialize game state
+            gameState.player = { x: 250, y: 150, health: 100 };
+            gameState.soldiers = [];
+            gameState.enemies = [];
+            gameState.enemiesKilled = 0;
+            gameState.goldEarned = 0;
+            gameState.currentRound = 0; // Initialize round
+            gameState.commandMode = 'follow'; // Default command mode
+
+            setupJoystick();
+            startRound(); // Start the first round
+        }
+
+        function startRound() {
+            gameState.currentRound++;
+            gameState.enemies = []; // Clear previous enemies
+            gameState.enemiesKilled = 0;
+
+            let numberOfEnemies = 12; // Base number of enemies
+            if (gameState.currentRound > 1) {
+                numberOfEnemies = Math.floor(numberOfEnemies * (1 + (0.25 * (gameState.currentRound - 1)))); // 25% increase per round
+            }
+
+            gameState.enemiesThisRound = 0; // Reset enemies killed this round
+            gameState.totalEnemiesThisRound = numberOfEnemies;
+
+            // Generate enemies (red dots) randomly
+            for (let i = 0; i < numberOfEnemies; i++) {
+                let x, y;
+                do {
+                    x = Math.random() * 500;
+                    y = Math.random() * 300;
+                } while (Math.abs(x - gameState.player.x) < 80 && Math.abs(y - gameState.player.y) < 80);
+
+                gameState.enemies.push({
+                    x: x,
+                    y: y,
+                    health: 15, // Reduced from 30 to 15
+                    alive: true
+                });
+                gameState.enemiesThisRound++;
+            }
+
+             // Generate soldiers (green dots) around player at the start of each round
+             gameState.soldiers = [];
+            for (let i = 0; i < battleData.soldiers; i++) {
+                gameState.soldiers.push({
+                    x: gameState.player.x + (Math.random() - 0.5) * 60,
+                    y: gameState.player.y + (Math.random() - 0.5) * 60,
+                    health: 50,
+                    alive: true
+                });
+            }
+
+            showMessage(`Round ${gameState.currentRound} started! Defeat ${numberOfEnemies} enemies!`);
+        }
+
+        function setupJoystick() {
+            const joystick = document.getElementById('joystick');
+            const container = document.getElementById('joystickContainer');
+
+            let isDragging = false;
+
+            // Mouse events
+            joystick.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', handleDrag);
+            document.addEventListener('mouseup', endDrag);
+
+            // Touch events for mobile
+            joystick.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startDrag(e.touches[0]);
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                handleDrag(e.touches[0]);
+            });
+
+            document.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                endDrag();
+            });
+
+            function startDrag(event) {
+                isDragging = true;
+                joystickActive = true;
+            }
+
+            function handleDrag(event) {
+                if (!isDragging) return;
+
+                const rect = container.getBoundingClientRect();
+                const centerX = rect.left + 50;
+                const centerY = rect.top + 50;
+
+                let dx = (event.clientX || event.pageX) - centerX;
+                let dy = (event.clientY || event.pageY) - centerY;
+
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const maxDistance = 35;
+
+                if (distance > maxDistance) {
+                    dx = (dx / distance) * maxDistance;
+                    dy = (dy / distance) * maxDistance;
+                }
+
+                joystick.style.left = (35 + dx) + 'px';
+                joystick.style.top = (35 + dy) + 'px';
+
+                // Move player based on joystick (increased responsiveness)
+                gameState.player.x += dx * 0.12;
+                gameState.player.y += dy * 0.12;
+
+                // Keep player in bounds
+                gameState.player.x = Math.max(15, Math.min(485, gameState.player.x));
+                gameState.player.y = Math.max(15, Math.min(285, gameState.player.y));
+            }
+
+            function endDrag() {
+                if (isDragging) {
+                    isDragging = false;
+                    joystickActive = false;
+                    joystick.style.left = '35px';
+                    joystick.style.top = '35px';
+                }
+            }
+        }
+
+        function startBattlefield() {
+            battleStartTime = Date.now();
+            battleEnded = false; // Reset flag
+            battleInterval = setInterval(updateBattle, 50);
+            showMessage('Battlefield started! Use joystick to move, attack button to fight!');
+        }
+
+        function setCommandMode(mode) {
+            gameState.commandMode = mode;
+            showMessage(`Soldiers set to ${mode} mode.`);
+        }
+
+        function updateBattle() {
+            const elapsed = Math.floor((Date.now() - battleStartTime) / 1000);
+            document.getElementById('battleTime').textContent = elapsed;
+            document.getElementById('goldEarned').textContent = gameState.goldEarned;
+            document.getElementById('currentRound').textContent = gameState.currentRound;
+            document.getElementById('enemiesLeft').textContent = gameState.enemiesThisRound;
+            document.getElementById('totalEnemies').textContent = gameState.totalEnemiesThisRound;
+            document.getElementById('playerHealth').textContent = Math.max(0, gameState.player.health);
+
+            // Move soldiers based on command mode
+            gameState.soldiers.forEach(soldier => {
+                if (!soldier.alive) return;
+
+                if (gameState.commandMode === 'follow') {
+                    // Follow player
+                    const dx = gameState.player.x - soldier.x;
+                    const dy = gameState.player.y - soldier.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance > 30) {
+                        soldier.x += (dx / distance) * 0.8;
+                        soldier.y += (dy / distance) * 0.8;
+                    }
+                } else if (gameState.commandMode === 'hold') {
+                    // Hold position - do nothing (soldiers stay where they are)
+                } else if (gameState.commandMode === 'rally') {
+                     // Rally to player's position
+                     const dx = gameState.player.x - soldier.x;
+                     const dy = gameState.player.y - soldier.y;
+                     const distance = Math.sqrt(dx * dx + dy * dy);
+
+                     soldier.x += (dx / distance) * 1.2;
+                     soldier.y += (dy / distance) * 1.2;
+                }
+            });
+
+            // Move enemies towards player/soldiers
+            gameState.enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+
+                // Find nearest target (player or soldier)
+                let targetX = gameState.player.x;
+                let targetY = gameState.player.y;
+                let nearestDistance = Math.sqrt((enemy.x - gameState.player.x) ** 2 + (enemy.y - gameState.player.y) ** 2);
+
+                gameState.soldiers.forEach(soldier => {
+                    if (!soldier.alive) return;
+                    const distance = Math.sqrt((enemy.x - soldier.x) ** 2 + (enemy.y - soldier.y) ** 2);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        targetX = soldier.x;
+                        targetY = soldier.y;
+                    }
+                });
+
+                const dx = targetX - enemy.x;
+                const dy = targetY - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 200) {
+                    enemy.x += (dx / distance) * 0.7;
+                    enemy.y += (dy / distance) * 0.7;
+
+                    // Attack player if close
+                    const playerDistance = Math.sqrt((enemy.x - gameState.player.x) ** 2 + (enemy.y - gameState.player.y) ** 2);
+                    if (playerDistance < 20 && Math.random() < 0.02) { // Reduced frequency from 0.03 to 0.02
+                        gameState.player.health -= 2; // Reduced damage from 3 to 2
+                        if (gameState.player.health <= 0) {
+                            endBattlefield(false);
+                            return;
+                        }
+                    }
+
+                    // Attack soldiers if close
+                    gameState.soldiers.forEach(soldier => {
+                        if (!soldier.alive) return;
+                        const soldierDistance = Math.sqrt((enemy.x - soldier.x) ** 2 + (enemy.y - soldier.y) ** 2);
+                        if (soldierDistance < 15 && Math.random() < 0.03) { // Reduced frequency from 0.05 to 0.03
+                            soldier.health -= 3; // Reduced damage from 5 to 3
+                            if (soldier.health <= 0) {
+                                soldier.alive = false;
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Check if all enemies are dead
+            const aliveEnemies = gameState.enemies.filter(e => e.alive).length;
+            gameState.enemiesThisRound = aliveEnemies;
+            if (aliveEnemies === 0) {
+                showMessage('Victory! All enemies defeated!');
+                setTimeout(() => startRound(), 2000); // Start the next round
+                return;
+            }
+
+            // Check if all soldiers are dead
+            const aliveSoldiers = gameState.soldiers.filter(s => s.alive).length;
+            if (aliveSoldiers === 0 && gameState.player.health <= 0) {
+                endBattlefield(false);
+            }
+
+            render();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, 500, 300);
+
+            // Draw battlefield background
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(0, 0, 500, 300);
+
+            // Draw soldiers (green dots)
+            gameState.soldiers.forEach(soldier => {
+                if (soldier.alive) {
+                    ctx.fillStyle = '#2ecc71';
+                    ctx.beginPath();
+                    ctx.arc(soldier.x, soldier.y, 5, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // Draw soldier health bar
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(soldier.x - 10, soldier.y - 15, 20, 3);
+                    ctx.fillStyle = soldier.health > 25 ? '#2ecc71' : '#f39c12';
+                    ctx.fillRect(soldier.x - 10, soldier.y - 15, (soldier.health / 50) * 20, 3);
+                }
+            });
+
+            // Draw enemies (red dots)
+            gameState.enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x, enemy.y, 6, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // Draw enemy health bar
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(enemy.x - 10, enemy.y - 15, 20, 3);
+                    ctx.fillStyle = enemy.health > 7 ? '#e74c3c' : '#f39c12';
+                    ctx.fillRect(enemy.x - 10, enemy.y - 15, (enemy.health / 15) * 20, 3);
+                }
+            });
+
+            // Draw player (blue dot)
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(gameState.player.x, gameState.player.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Draw health bar for player
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(gameState.player.x - 15, gameState.player.y - 20, 30, 5);
+            ctx.fillStyle = gameState.player.health > 50 ? '#2ecc71' : '#e74c3c';
+            ctx.fillRect(gameState.player.x - 15, gameState.player.y - 20, (gameState.player.health / 100) * 30, 5);
+        }
+
+        function attackNearby() {
+            const attackRange = 60;
+            let attacked = false;
+
+            gameState.enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+
+                const dx = gameState.player.x - enemy.x;
+                const dy = gameState.player.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= attackRange) {
+                    enemy.health -= 50; // Increased commander damage from 35 to 50
+                    attacked = true;
+
+                    if (enemy.health <= 0) {
+                        enemy.alive = false;
+                        gameState.enemiesKilled++;
+                        gameState.enemiesThisRound--;
+                        gameState.goldEarned += 15;
+                    }
+                }
+            });
+
+            // Player auto-attack (commander advantage)
+            gameState.enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+
+                const dx = gameState.player.x - enemy.x;
+                const dy = gameState.player.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= attackRange) {
+                    enemy.health -= 2; // Continuous commander damage
+                    if (enemy.health <= 0) {
+                        enemy.alive = false;
+                        gameState.enemiesKilled++;
+                        gameState.enemiesThisRound--;
+                        gameState.goldEarned += 20; // Commander gets more gold
+                    }
+                }
+            });
+
+            // Soldiers auto-attack nearby enemies continuously
+            gameState.soldiers.forEach(soldier => {
+                if (!soldier.alive) return;
+
+                gameState.enemies.forEach(enemy => {
+                    if (!enemy.alive) return;
+
+                    const dx = soldier.x - enemy.x;
+                    const dy = soldier.y - enemy.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance <= 25) {
+                        enemy.health -= 0.8; // Reduced soldier damage from 1 to 0.8
+                        if (enemy.health <= 0) {
+                            enemy.alive = false;
+                            gameState.enemiesKilled++;
+                            gameState.enemiesThisRound--;
+                            gameState.goldEarned += 10;
+                        }
+                    }
+                });
+            });
+
+            if (attacked) {
+                showMessage('Manual attack bonus damage dealt!');
+            } else {
+                showMessage('Auto-attacking nearby enemies!');
+            }
+        }
+
+        function retreat() {
+            endBattlefield(true);
+        }
+
+        let battleEnded = false;
+
+        function endBattlefield(retreated) {
+            if (battleEnded) return; // Prevent multiple calls
+            battleEnded = true;
+
+            if (battleInterval) {
+                clearInterval(battleInterval);
+                battleInterval = null;
+            }
+
+            const timeElapsed = Math.floor((Date.now() - battleStartTime) / 1000);
+
+            const formData = new FormData();
+            formData.append('enemies_killed', gameState.enemiesKilled);
+            formData.append('time_survived', timeElapsed);
+            formData.append('gold_earned', gameState.goldEarned);
+            formData.append('retreated', retreated);
+
+            fetch('/end_battlefield', {method: 'POST', body: formData})
+                .then(response => response.json())
+                .then(data => {
+                    showMessage(data.message);
+                    document.getElementById('battlefield').style.display = 'none';
+                    setTimeout(() => location.reload(), 3000);
+                });
+        }
+
+        function resetGame() {
+            if (confirm('Are you sure you want to reset your game? This cannot be undone!')) {
+                showMessage('Resetting game...');
+                setTimeout(() => {
+                    fetch('/reset', {method: 'POST'})
+                        .then(response => response.json())
+                        .then(data => {
+                            showMessage(data.message);
+                            setTimeout(() => location.href = '/', 1);
+                        });
+                }, 1);
+            }
+        }
+
+        // Check for income cooldown on page load
+        window.onload = function() {
+            const lastIncome = {{ player.last_soldier_income }};
+            const currentTime = Math.floor(Date.now() / 1000);
+            const timeDiff = currentTime - lastIncome;
+
+            if (timeDiff < 60) {
+                startCooldownTimer();
+            }
+        };
+    </script>
+</body>
+  </html>
